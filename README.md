@@ -1,61 +1,220 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel Action Pattern Example
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This project demonstrates the implementation of the **action pattern** in a Laravel application, inspired by the command pattern to encapsulate business logic into reusable, maintainable classes. It showcases how actions can ensure consistency, manage database transactions, and prepare for future scalability (e.g., API integration). The primary use case is creating a user and their associated profile in a single, atomic operation.
 
-## About Laravel
+## Purpose
+The action pattern is used to:
+- **Encapsulate Business Logic**: Separate complex logic from controllers into dedicated action classes for better maintainability.
+- **Ensure Consistency**: Provide a standardized approach for development teams to handle features uniformly.
+- **Manage Database Transactions**: Use Laravel's `DB::transaction` to ensure data integrity during multi-step operations.
+- **Support Scalability**: Enable shared logic between web and API layers, future-proofing the application.
+- **Facilitate Chaining**: Allow actions to call other actions for modular, complex workflows.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Project Structure
+The project follows a clean directory structure to organize models, actions, form requests, and controllers:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+```
+app/
+├── Actions/
+│   ├── CreateUserAction.php     # Handles user creation and chains profile creation
+│   └── CreateProfileAction.php  # Handles profile creation for a user
+├── Http/
+│   ├── Requests/
+│   │   └── CreateUserRequest.php  # Validates user and profile data
+│   └── Controllers/
+│       └── UserController.php    # Orchestrates the creation process
+├── Models/
+│   ├── User.php                  # User model with profile relationship
+│   └── Profile.php               # Profile model linked to a user
+routes/
+└── api.php                       # API route for user creation
+```
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Key Components
+1. **Models**:
+   - `User`: Represents a user with fields `name`, `email`, and `password`. Has a one-to-one relationship with `Profile`.
+   - `Profile`: Stores additional user information (`bio`, `location`) linked to a `User`.
 
-## Learning Laravel
+2. **Actions**:
+   - `CreateUserAction`: Creates a user and calls `CreateProfileAction` within a database transaction to ensure atomicity.
+   - `CreateProfileAction`: Creates a profile for a given user, encapsulating profile-specific logic.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+3. **Form Request**:
+   - `CreateUserRequest`: Validates input data for user and profile creation, ensuring data integrity before processing.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+4. **Controller**:
+   - `UserController`: Handles HTTP requests, delegates logic to `CreateUserAction`, and returns JSON responses.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+5. **Routes**:
+   - An API route (`POST /users`) is defined to trigger the user creation process.
 
-## Laravel Sponsors
+## Workflow
+1. A client sends a `POST` request to `/users` with user and profile data.
+2. The `CreateUserRequest` validates the input (e.g., `name`, `email`, `password`, `profile_data.bio`, `profile_data.location`).
+3. The `UserController` receives the validated data and invokes `CreateUserAction`.
+4. `CreateUserAction`:
+   - Creates a `User` record.
+   - Calls `CreateProfileAction` to create the associated `Profile`.
+   - Wraps both operations in a `DB::transaction` to ensure atomicity (if any step fails, all changes are rolled back).
+5. The controller returns a JSON response with the created user, profile, and a success message.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Setup Instructions
+### Prerequisites
+- PHP >= 8.1
+- Laravel >= 10
+- Composer
+- A database (e.g., MySQL, SQLite)
 
-### Premium Partners
+### Installation
+1. **Clone the Repository**:
+   ```bash
+   git clone <repository-url>
+   cd <repository-directory>
+   ```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+2. **Install Dependencies**:
+   ```bash
+   composer install
+   ```
+
+3. **Configure Environment**:
+   - Copy `.env.example` to `.env`:
+     ```bash
+     cp .env.example .env
+     ```
+   - Update `.env` with your database credentials:
+     ```
+     DB_CONNECTION=mysql
+     DB_HOST=127.0.0.1
+     DB_PORT=3306
+     DB_DATABASE=your_database
+     DB_USERNAME=your_username
+     DB_PASSWORD=your_password
+     ```
+
+4. **Generate Application Key**:
+   ```bash
+   php artisan key:generate
+   ```
+
+5. **Run Migrations**:
+   - Ensure you have migrations for the `users` and `profiles` tables. Example migrations:
+     ```php
+     // database/migrations/xxxx_create_users_table.php
+     Schema::create('users', function (Blueprint $table) {
+         $table->id();
+         $table->string('name');
+         $table->string('email')->unique();
+         $table->string('password');
+         $table->timestamps();
+     });
+
+     // database/migrations/xxxx_create_profiles_table.php
+     Schema::create('profiles', function (Blueprint $table) {
+         $table->id();
+         $table->foreignId('user_id')->constrained()->onDelete('cascade');
+         $table->text('bio');
+         $table->string('location');
+         $table->timestamps();
+     });
+     ```
+   - Run migrations:
+     ```bash
+     php artisan migrate
+     ```
+
+6. **Start the Development Server**:
+   ```bash
+   php artisan serve
+   ```
+
+7. **Test the API**:
+   - Use a tool like Postman or cURL to send a `POST` request to `http://localhost:8000/api/users`:
+     ```json
+     {
+         "name": "John Doe",
+         "email": "john@example.com",
+         "password": "password123",
+         "profile_data": {
+             "bio": "Software developer",
+             "location": "New York"
+         }
+     }
+     ```
+   - Expected response (HTTP 201):
+     ```json
+     {
+         "user": {
+             "id": 1,
+             "name": "John Doe",
+             "email": "john@example.com",
+             "created_at": "...",
+             "updated_at": "..."
+         },
+         "profile": {
+             "id": 1,
+             "user_id": 1,
+             "bio": "Software developer",
+             "location": "New York",
+             "created_at": "...",
+             "updated_at": "..."
+         },
+         "message": "User and profile created successfully"
+     }
+     ```
+
+## Testing
+To ensure the action pattern and transactional behavior work as expected:
+1. Install PHPUnit and Laravel's testing dependencies:
+   ```bash
+   composer require --dev phpunit/phpunit
+   ```
+2. Write tests for `CreateUserAction` and `UserController`. Example:
+   ```php
+   // tests/Feature/CreateUserTest.php
+   use App\Actions\CreateUserAction;
+   use App\Models\User;
+   use Tests\TestCase;
+
+   class CreateUserTest extends TestCase
+   {
+       public function test_user_and_profile_creation()
+       {
+           $response = $this->postJson('/api/users', [
+               'name' => 'John Doe',
+               'email' => 'john@example.com',
+               'password' => 'password123',
+               'profile_data' => [
+                   'bio' => 'Test bio',
+                   'location' => 'Test location',
+               ],
+           ]);
+
+           $response->assertStatus(201)
+                    ->assertJson(['message' => 'User and profile created successfully']);
+           $this->assertDatabaseHas('users', ['email' => 'john@example.com']);
+           $this->assertDatabaseHas('profiles', ['bio' => 'Test bio']);
+       }
+   }
+   ```
+3. Run tests:
+   ```bash
+   php artisan test
+   ```
+
+## Additional Notes
+- **Error Handling**: The actions and controller could be enhanced with try-catch blocks to handle exceptions gracefully and return user-friendly error messages.
+- **Scalability**: The action pattern supports adding more actions for complex workflows (e.g., creating related resources like roles or permissions).
+- **API Readiness**: The logic in actions can be reused for API endpoints, ensuring consistency if the application expands to include a public API.
+- **Security**: Consider adding authentication middleware (`auth:api`) to the route if user creation is restricted.
 
 ## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Contributions are welcome! Please:
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/your-feature`).
+3. Commit your changes (`git commit -m 'Add your feature'`).
+4. Push to the branch (`git push origin feature/your-feature`).
+5. Open a pull request.
 
 ## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is licensed under the MIT License.
